@@ -1,32 +1,25 @@
-import math
 from readData import readData
 from ljungBox import computeLjungBox
-from garch import GARCH
 from distributionAssumption import DistributionAssumption
 from dataSetSplitting import splitByPercentage
-from modelChecking import checkModel
-from forecastEvaluation import calcMeanAbsoluteError, calcRMSE
 from autocorrelations import computePartialAutocorrelations
 from plotting import\
     plotReturns,\
     plotAutocorrelations,\
     plotPartialAutocorrelations,\
-    plotModel,\
-    plotModelForecast
+    plotMean
 from meanEquations import\
     MeanEquationType,\
     calcMeanEquationResiduals,\
     getMeanEquationModel,\
-    calcMeanEquationPointsForecast,\
-    calcMeanVariance,\
     calcMeanEquationPoints,\
     getARMAMeanEqForFittedModel
 
 # filename = '../data/test-data-log.csv'
-# filename = '../data/wig20 Monthly-log.csv'
+filename = '../data/wig20 Monthly-log.csv'
 # filename = '../data/wig20 Weekly-log.csv'
 # filename = '../data/wig20 Daily-log.csv'
-filename = '../data/Ethereum Historical Data Monthly-log.csv'
+# filename = '../data/Ethereum Historical Data Monthly-log.csv'
 # filename = '../data/Ethereum Historical Data Weekly-log.csv'
 # filename = '../data/Ethereum Historical Data Daily-log.csv'
 
@@ -35,19 +28,19 @@ Constants
 """
 meanEqType = MeanEquationType.ARMA
 distributionAssumption = DistributionAssumption.NORMAL
-maxLag = 30
+maxLag = 50
 qStatLag = 20
 forecastLength = 24
 dataSetSplitCoefficient = 0.7
 confidence = 0.95
 studentDegreesOfFreedom = -1
-p = 2
+p = 1
 q = 1
-GARCHCoefInitGuess = [0, 0.5, 0.5, 0.1]
-ARMAp = 2
-ARMAq = 1
+GARCHCoefInitGuess = [0, 0.9, 0.1]
+ARMAp = 1
+ARMAq = 0
 ARMACoefInitGuess = [0, *[0 for i in range(ARMAp)], *[0 for i in range(ARMAq)]]
-ARMAErrorStandardDeviation = 0.25
+ARMAErrorStandardDeviation = 0.01
 
 ARMAParams = (
     ARMAp,
@@ -70,6 +63,7 @@ Dataset splitting
 """
 ARMA mean
 """
+"""
 if meanEqType == MeanEquationType.ARMA:
     ARMAEqModelSpecification = getMeanEquationModel(
         meanEqType,
@@ -81,11 +75,13 @@ if meanEqType == MeanEquationType.ARMA:
         getARMAMeanEqForFittedModel(ARMAEqModelSpecification)))
 else:
     ARMAEqModelSpecification = None
+"""
 
 """
 Plotting log returns
 """
 plotReturns(timestamps, logReturns, 'Log returns')
+
 
 """
 Plotting autocorrelations of the log returns series
@@ -95,18 +91,20 @@ plotAutocorrelations(logReturns, maxLag, 'Log returns autocorrelations')
 plotPartialAutocorrelations(
     logReturns, maxLag, 'Log returns partial autocorrelations')
 
+
 ARMAEqModelSpecificationFullData = getMeanEquationModel(
         meanEqType,
         logReturns,
         ARMAParams,
         ARMACoefInitGuess)
 
-
-print('ARMA mean equation full data: {}'.format(
-        getARMAMeanEqForFittedModel(ARMAEqModelSpecificationFullData)))
-
 meanEquationPointsFullData = calcMeanEquationPoints(
     meanEqType, logReturns, None, ARMAEqModelSpecificationFullData)
+
+
+if meanEqType == MeanEquationType.ARMA:
+    print('ARMA mean equation full data: {}'.format(
+        getARMAMeanEqForFittedModel(ARMAEqModelSpecificationFullData)))
 
 logReturnsWithMeanEq = [logReturns[i] - meanEquationPointsFullData[i]
                         for i in range(len(logReturns))]
@@ -114,12 +112,12 @@ logReturnsWithMeanEq = [logReturns[i] - meanEquationPointsFullData[i]
 plotAutocorrelations(
     logReturnsWithMeanEq,
     maxLag,
-    'Log returns autocorrelations with ARMA mean equation')
+    'Mean eq residuals ACF WIG20 daily')
 
 plotPartialAutocorrelations(
     logReturnsWithMeanEq,
     maxLag,
-    'Log returns partial autocorrelations with ARMA mean equation')
+    'Mean eq residuals PACF WIG20 daily')
 
 partialAutocorrelations = computePartialAutocorrelations(
     logReturnsWithMeanEq, maxLag)[1:]
@@ -131,6 +129,10 @@ absPartialAutocorrelations = list(map(
 print('Maximim absolute partial autocorrelation value: {}'.format(
     max(absPartialAutocorrelations)))
 
+plotMean(timestamps,
+         logReturns,
+         meanEquationPointsFullData,
+         'Mean equation WIG20 daily')
 
 """
 ARCH effect testing
@@ -146,7 +148,7 @@ Q_simple = computeLjungBox(meanEquationResidualsSimpleSquared, qStatLag)
 print('ARCH effect test Q value without ARCH:', Q_simple)
 
 meanEquationResiduals = calcMeanEquationResiduals(
-    meanEqType, trainLogReturns, None, ARMAEqModelSpecification)
+    meanEqType, trainLogReturns, None, ARMAEqModelSpecificationFullData)
 
 meanEquationResidualsSquared = list(map(
     lambda x: x**2,
@@ -154,98 +156,3 @@ meanEquationResidualsSquared = list(map(
 
 Q_ARCH = computeLjungBox(meanEquationResidualsSquared, qStatLag)
 print('ARCH effect test Q value with ARCH mean:', Q_ARCH)
-
-"""
-Model declaration and coefficients estimation
-"""
-model = GARCH(
-    p,
-    q,
-    distributionAssumption,
-    meanEqType,
-    studentDegreesOfFreedom,
-    ARMAEqModelSpecification)
-
-model.fit(trainLogReturns, GARCHCoefInitGuess)
-# model.setCoefs([0.00092, 0.186, 0.853])
-# model.setCoefs(0.00092, [0, 0.186], [0, 0.853])
-print('Model equation: {}'.format(model.getModelEquationStr()))
-
-"""
-Model checking
-"""
-meanTrainVariance = calcMeanVariance(trainLogReturns)
-
-trainVarianceList = model.computeVarianceList(
-    trainLogReturns,
-    len(trainLogReturns) - 1,
-    meanTrainVariance)
-
-checkModel(
-    trainLogReturns,
-    list(map(math.sqrt, trainVarianceList)),
-    maxLag,
-    distributionAssumption)
-
-"""
-Model visualisation
-"""
-trainMeanEqPrecomputedSimple = getMeanEquationModel(
-    MeanEquationType.SIMPLE, trainLogReturns)
-
-trainMeanEqResiduals = calcMeanEquationResiduals(
-    meanEqType, trainLogReturns, None, ARMAEqModelSpecification)
-
-trainMeanEqResidualsSquared = list(map(
-    lambda x: x**2,
-    trainMeanEqResiduals))
-
-trainModelPointwiseVolatility = model.computeVarianceList(
-    trainMeanEqResidualsSquared, None, meanTrainVariance)
-
-trainModelPointwisePredictionIntervals = model.\
-    computePointwisePredictiveIntervals(trainLogReturns, confidence)
-
-plotModel(
-    trainTimestamps,
-    trainLogReturns,
-    meanEqType,
-    trainMeanEqPrecomputedSimple,
-    ARMAEqModelSpecification,
-    trainModelPointwiseVolatility,
-    trainModelPointwisePredictionIntervals)
-
-"""
-Forecasting
-"""
-(forecastVol, forecastPredictiveIntervals) = model.forecast(
-    trainLogReturns,
-    len(trainLogReturns) - 1,
-    forecastLength)
-
-meanEqForecast = calcMeanEquationPointsForecast(
-    meanEqType, trainLogReturns, forecastLength, ARMAEqModelSpecification)
-
-plotModelForecast(
-    testTimestamps[:forecastLength],
-    testLogReturns[:forecastLength],
-    forecastVol,
-    meanEqType,
-    trainMeanEqPrecomputedSimple,
-    ARMAEqModelSpecification,
-    meanEqForecast,
-    forecastPredictiveIntervals)
-
-testMeanEqResiduals = calcMeanEquationResiduals(
-    meanEqType, testLogReturns, None, ARMAEqModelSpecification)
-
-testMeanEqResidualsSquared = list(map(
-    lambda x: x**2,
-    testMeanEqResiduals))
-
-print('\nForecast evaluation:')
-print('Mean absolute error: {}'.format(calcMeanAbsoluteError(
-    testMeanEqResidualsSquared[:forecastLength], forecastVol)))
-
-print('Root mean squared error: {}'.format(calcRMSE(
-    testMeanEqResidualsSquared[:forecastLength], forecastVol)))

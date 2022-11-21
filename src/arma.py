@@ -9,7 +9,8 @@ class ARMA():
             p,
             q,
             distributionAssumption,
-            degreesOfFreedom):
+            degreesOfFreedom,
+            errorStandardDeviation):
 
         self.p = p
         self.q = q
@@ -18,6 +19,7 @@ class ARMA():
         self.teta = [0 for i in range(q + 1)]
         self.distribution = distributionAssumption
         self.df = degreesOfFreedom
+        self.errorStandardDeviation = errorStandardDeviation
 
     """
     Visualisation
@@ -30,7 +32,7 @@ class ARMA():
         strTeta = ' + '.join(['{}*a_{{t-{}}}'.format(self.teta[j], j)
                               for j in range(1, self.q + 1)])
 
-        return 'x_t = {} + {} + a_{{t}} + {}'.format(
+        return 'x_t = {} + {} + a_{{t}} - ({})'.format(
             self.phi_0, strPhi, strTeta)
 
     """
@@ -77,16 +79,17 @@ class ARMA():
 
     def computeValueList(
             self,
-            nPoints,
-            sampleStart,
+            actualList,
             phi_0=None,
             phi=None,
-            teta=None):
+            teta=None,
+            noiseList=None):
 
         sampleStartLength = max(self.p, self.q)
+        nPoints = len(actualList)
 
-        if len(sampleStart) < sampleStartLength:
-            raise Exception('Invalid sampleStart length')
+        if nPoints < sampleStartLength:
+            raise Exception('Samle length too small')
 
         if phi_0 is None:
             phi_0 = self.phi_0
@@ -95,14 +98,15 @@ class ARMA():
         if teta is None:
             teta = self.teta
 
-        noiseList = [DistributionAssumptionUtils.getRandomValue(
-            self.distribution, self.df)
-            for i in range(nPoints)]
+        if noiseList is None:
+            noiseList = [DistributionAssumptionUtils.getRandomValue(
+                self.distribution, self.df, self.errorStandardDeviation)
+                for i in range(nPoints)]
 
-        valueList = [*sampleStart[:sampleStartLength]]
+        valueList = [*actualList[:sampleStartLength]]
         for t in range(sampleStartLength, nPoints):
             valueList.append(self.computeValue(
-                valueList,
+                actualList,
                 noiseList,
                 t,
                 phi_0,
@@ -116,11 +120,21 @@ class ARMA():
     """
 
     def fit(self, logReturns, paramInitGuess):
-
         if not len(paramInitGuess) == self.p + self.q + 1:
             raise Exception('Invalid paramInitGuess length')
 
         startSampleSize = max(self.p, self.q)
+        estimationSampleSize = len(logReturns) - startSampleSize
+
+        noiseList = [DistributionAssumptionUtils.getRandomValue(
+                self.distribution, self.df, self.errorStandardDeviation)
+                for i in range(len(logReturns))]
+
+        def calcSquaredError(logReturn, modelValue):
+            try:
+                return (logReturn - modelValue) ** 2 / estimationSampleSize
+            except:
+                return float('inf') / estimationSampleSize
 
         # first param is alpha_0, then alpha_1,...,alpha_p, beta_1,...,beta_q
         def mse(params):
@@ -128,19 +142,21 @@ class ARMA():
                 = splitModelParamsList(params, self.p, self.q)
 
             modelValuesList = self.computeValueList(
-                len(logReturns),
                 logReturns,
                 phi_0,
                 phi,
-                teta)
+                teta,
+                noiseList)
 
-            return -sum([(logReturns[i] - modelValuesList[i]) ** 2
-                         for i in range(startSampleSize, len(logReturns))])\
-                / startSampleSize
+            errors = [calcSquaredError(logReturns[i], modelValuesList[i])
+                      for i in range(startSampleSize, len(logReturns))]
 
+            return -sum(errors)
+
+        phi0Bounds = (-10, +10)
         phiBounds = [(-10, 10) for i in range(0, self.p + 1)]
         tetaBounds = [(-10, 10) for i in range(0, self.q + 1)]
-        varBounds = [(-10, 10), *phiBounds, *tetaBounds]
+        varBounds = [phi0Bounds, *phiBounds, *tetaBounds]
 
         paramEstimates = cyclicCoordinateDescentMax(
             mse, paramInitGuess, varBounds)
@@ -160,7 +176,7 @@ class ARMA():
         valueListFull = _logReturns.copy()[:forecastOrigin + 1]
 
         noiseListKnown = [DistributionAssumptionUtils.getRandomValue(
-            self.distribution, self.df)
+            self.distribution, self.df, self.errorStandardDeviation)
             for i in range(len(valueListFull))]
 
         noiseListForecast = [0 for i in range(nPoints)]

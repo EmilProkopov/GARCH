@@ -11,9 +11,9 @@ class DistributionAssumption(Enum):
 
 class DistributionAssumptionUtils:
     @staticmethod
-    def getRandomValue(dAssumption, degreesOfFreedom=-1):
+    def getRandomValue(dAssumption, degreesOfFreedom=-1, standardDeviation=1):
         if dAssumption == DistributionAssumption.NORMAL:
-            return gauss(0, 1)
+            return gauss(0, standardDeviation)
         elif dAssumption == DistributionAssumption.STUDENT:
             return np.random.standard_t(degreesOfFreedom)
 

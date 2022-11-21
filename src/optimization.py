@@ -14,7 +14,7 @@ def cyclicCoordinateDescentMax(
         precision=1e-12,
         precisionPerVariable=1e-12,
         maxIter=200,
-        maxIterPerVariable=200):
+        maxIterPerVariable=10):
 
     # dichotomy method
     def optimizeSingleVar(varVals, varInd):
@@ -56,9 +56,11 @@ def cyclicCoordinateDescentMax(
         return c
 
     varValues = varInitGuess
+
     iterCount = 0
     while iterCount <= maxIter:
         iterCount += 1
+        # print(iterCount)
 
         varValuesBefore = varValues.copy()
         for varInd in range(len(varValues)):

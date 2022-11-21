@@ -145,9 +145,9 @@ class GARCH():
                  for t in range(self.q, len(varianceList))
                  if not varianceList[t] == 0])
 
-        alphaBounds = [(0, 1/3), *[(0, 10) for i in range(1, self.p + 1)]]
-        betaBounds = [(0, 10) for i in range(0, self.q + 1)]
-        varBounds = [(1e-12, 10), *alphaBounds, *betaBounds]
+        alphaBounds = [(0, 1/3), *[(0, 1) for i in range(1, self.p + 1)]]
+        betaBounds = [(0, 1) for i in range(0, self.q + 1)]
+        varBounds = [(1e-12, 1), *alphaBounds, *betaBounds]
 
         paramEstimates = cyclicCoordinateDescentMax(
             logLikelihood, paramInitGuess, varBounds)

@@ -8,7 +8,7 @@ class MeanEquationType(Enum):
     ARMA = auto()
 
 
-defaultARMAParams = (1, 1, DistributionAssumption.NORMAL, 2)
+defaultARMAParams = (1, 1, DistributionAssumption.NORMAL, 2, 10)
 
 
 def getMeanEquationModel(
@@ -22,15 +22,24 @@ def getMeanEquationModel(
         return mean
 
     elif assumption == MeanEquationType.ARMA:
-        (p, q, distributionAssumption, degreesOfFreedom) = ARMAParams
+        (p, q, distributionAssumption, degreesOfFreedom, errorSD) = ARMAParams
         if ARMACoefInitGuess is None:
             ARMACoefInitGuess = [
                 0, *[0 for i in range(p)], *[0 for i in range(q)]]
 
-        model = ARMA(p, q, distributionAssumption, degreesOfFreedom)
+        model = ARMA(p, q, distributionAssumption, degreesOfFreedom, errorSD)
         model.fit(sample, ARMACoefInitGuess)
 
         return (ARMAParams, model.getCoefs())
+
+
+def getARMAMeanEqForFittedModel(ARMAEqModel):
+    (ARMAParams, ARMACoefs) = ARMAEqModel
+    (p, q, distributionAssumption, degreesOfFreedom, errorSD) = ARMAParams
+    model = ARMA(p, q, distributionAssumption, degreesOfFreedom, errorSD)
+    model.setCoefs(ARMACoefs)
+
+    return model.getModelEquationStr()
 
 
 def calcMeanEquationPoints(
@@ -52,11 +61,11 @@ def calcMeanEquationPoints(
             ARMAEqModel = getMeanEquationModel(assumption, sample)
 
         (ARMAParams, ARMACoefs) = ARMAEqModel
-        (p, q, distributionAssumption, degreesOfFreedom) = ARMAParams
-        model = ARMA(p, q, distributionAssumption, degreesOfFreedom)
+        (p, q, distributionAssumption, degreesOfFreedom, errorSD) = ARMAParams
+        model = ARMA(p, q, distributionAssumption, degreesOfFreedom, errorSD)
         model.setCoefs(ARMACoefs)
 
-        return model.computeValueList(len(sample), sample)
+        return model.computeValueList(sample)
 
 
 def calcMeanEquationResiduals(
@@ -86,8 +95,8 @@ def calcMeanEquationPointsForecast(
             ARMAEqModel = getMeanEquationModel(assumption, sample)
 
         (ARMAParams, ARMACoefs) = ARMAEqModel
-        (p, q, distributionAssumption, degreesOfFreedom) = ARMAParams
-        model = ARMA(p, q, distributionAssumption, degreesOfFreedom)
+        (p, q, distributionAssumption, degreesOfFreedom, errorSD) = ARMAParams
+        model = ARMA(p, q, distributionAssumption, degreesOfFreedom, errorSD)
         model.setCoefs(ARMACoefs)
 
         return model.forecast(sample, len(sample) - 1, nPoints)

@@ -22,10 +22,33 @@ def plotReturns(timestamps, logReturns, label):
     plt.show()
 
 
+def plotMean(timestamps, logReturns, meanEqPoints, title):
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        logReturns,
+        label='Log returns',
+        color='k',
+        linewidth=0.9)
+
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        meanEqPoints,
+        label='Mean equation',
+        color='r',
+        linewidth=0.9)
+
+    plt.tick_params(axis='x', labelrotation=90)
+    plt.margins(x=0)
+    plt.xlabel('Time')
+    plt.legend()
+    plt.title(title)
+    plt.show()
+
+
 def plotAutocorrelations(values, maxLag, label):
     acorrs = computeAutocorrelations(values, maxLag)
 
-    plt.bar(range(0, maxLag + 1), acorrs, label=label, width=0.2, color='k')
+    plt.bar(range(0, maxLag + 1), acorrs, label=label, width=0.25, color='k')
     plt.xlabel('Lag')
     plt.grid()
     plt.legend()
@@ -35,7 +58,7 @@ def plotAutocorrelations(values, maxLag, label):
 def plotPartialAutocorrelations(values, maxLag, label):
     pacorrs = computePartialAutocorrelations(values, maxLag)
 
-    plt.bar(range(0, maxLag + 1), pacorrs, label=label, width=0.2, color='k')
+    plt.bar(range(0, maxLag + 1), pacorrs, label=label, width=0.25, color='k')
     plt.xlabel('Lag')
     plt.grid()
     plt.legend()
@@ -122,20 +145,6 @@ def plotModel(
 
     plt.plot(
         np.asarray(timestamps, dtype='datetime64[s]'),
-        meanEqResidualsSquared,
-        label='Actual volatility',
-        color='b',
-        linewidth=0.9)
-
-    plt.plot(
-        np.asarray(timestamps, dtype='datetime64[s]'),
-        modelPointwiseVolatility,
-        label='Model estimated volatility',
-        color='r',
-        linewidth=0.9)
-
-    plt.plot(
-        np.asarray(timestamps, dtype='datetime64[s]'),
         predMaxFrom,
         label='Pointwise prediction interval upper bound',
         color='salmon',
@@ -148,6 +157,26 @@ def plotModel(
         color='salmon',
         linewidth=0.9,
         linestyle='--')
+
+    plt.xlabel('Time')
+    plt.tick_params(axis='x', labelrotation=90)
+    plt.margins(x=0)
+    plt.legend(bbox_to_anchor=(1, 1))
+    plt.show()
+
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        meanEqResidualsSquared,
+        label='Actual volatility',
+        color='b',
+        linewidth=0.9)
+
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        modelPointwiseVolatility,
+        label='Model estimated volatility',
+        color='r',
+        linewidth=0.9)
 
     plt.xlabel('Time')
     plt.tick_params(axis='x', labelrotation=90)
@@ -200,20 +229,6 @@ def plotModelForecast(
 
     plt.plot(
         np.asarray(timestamps, dtype='datetime64[s]'),
-        meanEqResidualsSquared,
-        label='Actual volatility',
-        color='b',
-        linewidth=0.9)
-
-    plt.plot(
-        np.asarray(timestamps, dtype='datetime64[s]'),
-        forecastVol,
-        label='Model volatility forecast',
-        color='r',
-        linewidth=0.9)
-
-    plt.plot(
-        np.asarray(timestamps, dtype='datetime64[s]'),
         predMaxFrom,
         label='Forecast interval upper bound',
         color='salmon',
@@ -226,6 +241,26 @@ def plotModelForecast(
         color='salmon',
         linewidth=0.9,
         linestyle='--')
+
+    plt.xlabel('Time')
+    plt.tick_params(axis='x', labelrotation=90)
+    plt.margins(x=0)
+    plt.legend(bbox_to_anchor=(1, 1))
+    plt.show()
+
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        meanEqResidualsSquared,
+        label='Actual volatility',
+        color='b',
+        linewidth=0.9)
+
+    plt.plot(
+        np.asarray(timestamps, dtype='datetime64[s]'),
+        forecastVol,
+        label='Model volatility forecast',
+        color='r',
+        linewidth=0.9)
 
     plt.xlabel('Time')
     plt.tick_params(axis='x', labelrotation=90)
